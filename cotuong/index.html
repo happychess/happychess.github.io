@@ -1,0 +1,156 @@
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="css/xiangqiboard-0.3.3.min.css"/>
+    <style type="text/css">
+     .highlight-red {
+       box-shadow: inset 0 0 3px 3px yellow;
+     }
+     .highlight-black {
+       box-shadow: inset 0 0 3px 3px blue;
+     }
+    </style>
+  </head>
+
+  <body>
+    <div style="margin-top:30px; width: 90%;">
+      <div id="myBoard" style="width: 450px; margin: 0px auto;"></div>
+
+      <p></p>
+
+      <div style="text-align: center;">
+        <label>Game Status:</label>
+        <label id="status" style="margin-left:2px;"></label>
+      </div>
+
+      <!-- <label>FEN:</label> -->
+      <!-- <div id="fen"></div> -->
+
+      <p></p>
+
+      <!-- <label>PGN:</label>
+           <div id="pgn"></div> -->
+
+    </div>
+
+    <script src="js/jquery-3.5.0.min.js"></script>
+    <script src="js/xiangqi.min.js"></script>
+    <!-- <script src="js/xiangqiboard-0.3.3.js"></script> -->
+    <script src="js/xiangqiboard-0.3.3.min.js"></script>
+
+    <script>
+
+     let board = null;
+     let game = new Xiangqi();
+     let $board = $('#myBoard');
+     let $status = $('#status');
+     let $fen = $('#fen');
+     let $pgn = $('#pgn');
+     let squareClass = 'square-2b8ce';
+     let squareToHighlight = null;
+     let colorToHighlight = null;
+
+     function removeHighlights (color) {
+       $board.find('.' + squareClass)
+             .removeClass('highlight-' + color);
+     }
+
+     function onDragStart (source, piece, position, orientation) {
+       // do not pick up pieces if the game is over
+       if (game.game_over()) return false;
+
+       // only pick up pieces for the side to move
+       if ((game.turn() === 'r' && piece.search(/^b/) !== -1) ||
+           (game.turn() === 'b' && piece.search(/^r/) !== -1)) {
+         return false;
+       }
+     }
+
+     function onDrop (source, target) {
+       // see if the move is legal
+       let move = game.move({
+         from: source,
+         to: target,
+         promotion: 'q' // NOTE: always promote to a queen for example simplicity
+       });
+
+       // illegal move
+       if (move === null) return 'snapback';
+
+       // highlight red's move
+       if (game.turn() === 'r') {
+         $board.find('.' + squareClass).removeClass('highlight-black');
+         $board.find('.square-' + move.from).addClass('highlight-red');
+         $board.find('.square-' + move.to).addClass('highlight-red');
+         squareToHighlight = move.to;
+         colorToHighlight = 'red';
+       } else {
+         $board.find('.' + squareClass).removeClass('highlight-red');
+         $board.find('.square-' + move.from).addClass('highlight-black');
+         $board.find('.square-' + move.to).addClass('highlight-black');
+         squareToHighlight = move.to;
+         colorToHighlight = 'black';
+       }
+
+       updateStatus();
+     }
+
+     function onMoveEnd () {
+       $board.find('.square-' + squareToHighlight)
+             .addClass('highlight-' + colorToHighlight);
+     }
+
+     // update the board position after the piece snap
+     // for castling, en passant, pawn promotion
+     function onSnapEnd () {
+       board.position(game.fen());
+     }
+
+     function updateStatus () {
+       let status = '';
+
+       let moveColor = 'Red';
+       if (game.turn() === 'b') {
+         moveColor = 'Black';
+       }
+
+       // checkmate?
+       if (game.in_checkmate()) {
+         status = 'Game over, ' + moveColor + ' is in checkmate.';
+       }
+
+       // draw?
+       else if (game.in_draw()) {
+         status = 'Game over, drawn position';
+       }
+
+       // game still on
+       else {
+         status = moveColor + ' to move';
+
+         // check?
+         if (game.in_check()) {
+           status += ', ' + moveColor + ' is in check';
+         }
+       }
+
+       $status.html(status);
+
+       // $fen.html(game.fen());
+       // $pgn.html(game.pgn());
+     }
+
+     let config = {
+       draggable: true,
+       position: 'start',
+       onDragStart: onDragStart,
+       onDrop: onDrop,
+       onMoveEnd: onMoveEnd,
+       onSnapEnd: onSnapEnd
+     };
+
+     board = Xiangqiboard('myBoard', config);
+
+     updateStatus();
+    </script>
+  </body>
+</html>
